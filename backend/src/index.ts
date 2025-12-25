@@ -12,7 +12,15 @@ app.use(cors());
 app.use(express.json());
 
 // Swagger UI
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use(
+	"/api-docs",
+	swaggerUi.serve,
+	swaggerUi.setup(swaggerSpec, {
+		customCss: ".swagger-ui .topbar { display: none }",
+		customSiteTitle: "KNOU CBT API Documentation",
+		customfavIcon: "/favicon.ico",
+	})
+);
 
 // Routes
 app.use("/api", examRoutes);
