@@ -6,8 +6,8 @@ import { swaggerSpec } from "./config/swagger";
 import examRoutes from "./routes/examRoutes";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
+const PORT = parseInt(process.env.PORT || "3000");
+const HOST = "0.0.0.0";
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -24,7 +24,8 @@ app.get("/health", (req, res) => {
 });
 
 // 서버 시작
-app.listen(PORT, () => {
-	console.log(`🚀 Server running on http://localhost:${PORT}`);
-	console.log(`📚 Swagger docs available at http://localhost:${PORT}/api-docs`);
+app.listen(PORT, HOST, () => {
+	// HOST 추가
+	console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+	console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
 });
