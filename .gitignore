@@ -24,3 +24,5 @@ output/*
 .idea/
 *.swp
 *.swo
+
+/generated/prisma
