@@ -6,8 +6,7 @@ import { swaggerSpec } from "./config/swagger";
 import examRoutes from "./routes/examRoutes";
 
 const app = express();
-const PORT = parseInt(process.env.PORT || "3000");
-const HOST = "0.0.0.0";
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -19,13 +18,28 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.use("/api", examRoutes);
 
 // Health check
+app.get("/", (req, res) => {
+	res.json({ 
+		status: "ok",
+		message: "KNOU CBT API",
+		docs: "/api-docs"
+	});
+});
+
 app.get("/health", (req, res) => {
 	res.json({ status: "ok" });
 });
 
-// 서버 시작
-app.listen(PORT, HOST, () => {
-	// HOST 추가
-	console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-	console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
-});
+// Vercel에서는 export default로 내보내기
+export default app;
+
+// 로컬 개발 환경에서만 서버 시작
+if (process.env.NODE_ENV !== "production") {
+	const PORT = parseInt(process.env.PORT || "3000");
+	const HOST = "0.0.0.0";
+	
+	app.listen(PORT, HOST, () => {
+		console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+		console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
+	});
+}
