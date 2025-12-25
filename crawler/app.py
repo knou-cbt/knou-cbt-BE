@@ -231,7 +231,7 @@ if __name__ == '__main__':
     print(f"{'='*80}")
     print(f"전체 문제: {total}개")
     print(f"선택지 4개 이상: {with_choices}개 ({with_choices/total*100:.1f}%)")
-    print(f"정답 있는 문제: {with_answers}개 ({with_answers/total*100:.1f}%)")
+    print(f"정답 있는 문제: {with_ansimage.png  wers}개 ({with_answers/total*100:.1f}%)")
     print(f"해설 있는 문제: {with_explanations}개 ({with_explanations/total*100:.1f}%)")
     
     # 선택지 개수 분포
