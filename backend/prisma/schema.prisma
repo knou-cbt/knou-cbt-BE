@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Subject {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique //@db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") //필드 매핑
+  exams     Exam[] //관계 설정 (1:N)
+
+  @@map("subjects") // 테이블 이름 매핑
+}
+
+model Exam {
+  id             Int        @id @default(autoincrement())
+  subjectId      Int        @map("subject_id")
+  year           Int
+  examType       Int        @map("exam_type") //@db.SmallInt
+  title          String     //@db.VarChar(255)
+  totalQuestions Int        @map("total_questions")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  
+  subject        Subject    @relation(fields: [subjectId], references: [id])
+  questions      Question[]
+
+  @@map("exams")
+}
+
+model Question {
+  id               Int      @id @default(autoincrement())
+  examId           Int      @map("exam_id")
+  questionNumber   Int      @map("question_number")
+  questionText     String   @map("question_text") //@db.Text
+  questionImageUrl String?  @map("question_image_url")
+  correctAnswer    Int      @map("correct_answer")
+  createdAt        DateTime @default(now()) @map("created_at")
+  
+  exam             Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  choices          Choice[]
+
+  @@map("questions")
+}
+
+model Choice {
+  id             Int     @id @default(autoincrement())
+  questionId     Int     @map("question_id")
+  choiceNumber   Int     @map("choice_number")
+  choiceText     String  @map("choice_text") //@db.Text
+  choiceImageUrl String? @map("choice_image_url") //@db.Text
+  
+  question       Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@map("choices")
+}
