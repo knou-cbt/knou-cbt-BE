@@ -24,6 +24,10 @@ const options: swaggerJsdoc.Options = {
 				description: "크롤링 관련 API",
 			},
 			{
+				name: "Subjects",
+				description: "과목 관련 API",
+			},
+			{
 				name: "Exams",
 				description: "시험 관련 API",
 			},
