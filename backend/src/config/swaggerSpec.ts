@@ -2,9 +2,14 @@
 // Vercel 환경에서 파일 시스템 접근 문제를 피하기 위해 직접 스펙 정의
 
 const isProduction = process.env.NODE_ENV === "production";
-const serverUrl = process.env.VERCEL_URL 
-	? `https://${process.env.VERCEL_URL}` 
-	: "http://localhost:3000";
+
+// Vercel URL 처리
+let serverUrl = "http://localhost:3000";
+if (process.env.VERCEL_URL) {
+	serverUrl = `https://${process.env.VERCEL_URL}`;
+} else if (process.env.API_URL) {
+	serverUrl = process.env.API_URL;
+}
 
 export const swaggerSpec = {
 	openapi: "3.0.0",
@@ -266,7 +271,7 @@ export const swaggerSpec = {
 										data: {
 											type: "object",
 											properties: {
-												exam: { $ref: "#/components/schemas/Exam" },
+												exam: { $ref: "#/components/schemas/ExamInfo" },
 												questions: {
 													type: "array",
 													items: { $ref: "#/components/schemas/Question" },
@@ -405,26 +410,40 @@ export const swaggerSpec = {
 					subject: { $ref: "#/components/schemas/Subject" },
 				},
 			},
-			Choice: {
+			ExamInfo: {
 				type: "object",
 				properties: {
 					id: { type: "integer" },
-					questionId: { type: "integer" },
-					choiceNumber: { type: "integer" },
-					choiceText: { type: "string" },
-					choiceImageUrl: { type: "string", nullable: true },
+					title: { type: "string" },
+					subject: { type: "string" },
+					totalQuestions: { type: "integer" },
+				},
+			},
+			Choice: {
+				type: "object",
+				properties: {
+					number: { type: "integer", description: "선택지 번호 (1-4)" },
+					text: { type: "string", description: "선택지 텍스트" },
+					imageUrl: { type: "string", nullable: true, description: "선택지 이미지 URL" },
+					isCorrect: { 
+						type: "boolean", 
+						description: "정답 여부 (study 모드일 때만 포함)",
+						nullable: true 
+					},
 				},
 			},
 			Question: {
 				type: "object",
 				properties: {
 					id: { type: "integer" },
-					examId: { type: "integer" },
-					questionNumber: { type: "integer" },
-					questionText: { type: "string" },
-					questionImageUrl: { type: "string", nullable: true },
-					correctAnswer: { type: "integer" },
-					createdAt: { type: "string", format: "date-time" },
+					number: { type: "integer", description: "문제 번호" },
+					text: { type: "string", description: "문제 텍스트" },
+					imageUrl: { type: "string", nullable: true, description: "문제 이미지 URL" },
+					correctAnswer: { 
+						type: "integer", 
+						description: "정답 번호 (study 모드일 때만 포함)",
+						nullable: true 
+					},
 					choices: {
 						type: "array",
 						items: { $ref: "#/components/schemas/Choice" },

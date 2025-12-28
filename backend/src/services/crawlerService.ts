@@ -97,17 +97,34 @@ class CrawlerService {
 		const itemsMatch = text.match(/(\d+)\s*문항/);
 		if (itemsMatch) metadata.totalQuestions = parseInt(itemsMatch[1]);
 
-		// 과목명
-		firstTable.find("tr").each((_, row) => {
-			$(row)
-				.find("td")
-				.each((_, cell) => {
-					const cellText = $(cell).text().trim();
-					if (/\S+학(개론)?$/.test(cellText) && cellText.length < 30) {
-						metadata.subject = cellText;
-					}
-				});
-		});
+		// 과목명 추출 (두 번째 tr의 텍스트)
+		const rows = firstTable.find("tr");
+		if (rows.length >= 2) {
+			const secondRowText = $(rows[1]).text().trim();
+			// 비어있지 않고, 일반적인 키워드가 없으면 과목명으로 간주
+			if (secondRowText && !/(학년도|학기|학년|문항|교시|시간|분|시험종류|출제위원|출제범위|자료출처|웹앱제작)/.test(secondRowText)) {
+				metadata.subject = secondRowText;
+			}
+		}
+		
+		// 과목명을 못 찾은 경우, 다른 패턴으로 시도
+		if (!metadata.subject) {
+			firstTable.find("tr").each((_, row) => {
+				$(row)
+					.find("td")
+					.each((_, cell) => {
+						const cellText = $(cell).text().trim();
+						
+						// 과목명 패턴: ~학, ~론, ~과 등으로 끝나는 텍스트
+						if (/\S+(학|론|과|법|사|어|어학|개론)$/.test(cellText) && cellText.length > 2 && cellText.length < 30) {
+							// 년도, 학기, 학년 등의 키워드가 없으면 과목명으로 간주
+							if (!/(학년도|학기|학년|문항|교시|시간|분|시험종류|출제|자료|웹앱)/.test(cellText)) {
+								metadata.subject = cellText;
+							}
+						}
+					});
+			});
+		}
 
 		return metadata;
 	}
@@ -148,42 +165,49 @@ class CrawlerService {
 				images,
 			};
 
-			// 선택지 찾기 (다음 형제 행들)
-			let currentRow = $(qRow).next();
+		// 선택지 찾기 (다음 형제 행들)
+		let currentRow = $(qRow).next();
 
-			while (currentRow.length) {
-				// 선택지 행
-				if (currentRow.hasClass("alla6AnswerTr")) {
-					const label = currentRow.find("label").first();
-					if (label.length) {
-						const input = label.find("input").first();
-						const choiceNum = input.attr("value");
-
-						input.remove();
-						const choiceText = label.text().trim();
-
-						question.choices.push({
-							number: choiceNum ? parseInt(choiceNum) : question.choices.length + 1,
-							text: choiceText,
-						});
-					}
-				}
-				// 해설 행
-				else if (currentRow.hasClass("alla6SolveTr")) {
-					const solveTd = currentRow.find("td").first();
-					const explanation = solveTd.text().trim().replace("해설)", "").trim();
-					if (explanation) {
-						question.explanation = explanation;
-					}
-					break;
-				}
-				// 다음 문제 시작
-				else if (currentRow.hasClass("alla6QuestionTr")) {
-					break;
-				}
-
-				currentRow = currentRow.next();
+		while (currentRow.length) {
+			// 보기 이미지 행
+			if (currentRow.hasClass("alla6ExampleTr_Img")) {
+				currentRow.find("img").each((_, img) => {
+					const src = $(img).attr("src");
+					if (src) images.push(src);
+				});
 			}
+			// 선택지 행
+			else if (currentRow.hasClass("alla6AnswerTr")) {
+				const label = currentRow.find("label").first();
+				if (label.length) {
+					const input = label.find("input").first();
+					const choiceNum = input.attr("value");
+
+					input.remove();
+					const choiceText = label.text().trim();
+
+					question.choices.push({
+						number: choiceNum ? parseInt(choiceNum) : question.choices.length + 1,
+						text: choiceText,
+					});
+				}
+			}
+			// 해설 행
+			else if (currentRow.hasClass("alla6SolveTr")) {
+				const solveTd = currentRow.find("td").first();
+				const explanation = solveTd.text().trim().replace("해설)", "").trim();
+				if (explanation) {
+					question.explanation = explanation;
+				}
+				break;
+			}
+			// 다음 문제 시작
+			else if (currentRow.hasClass("alla6QuestionTr")) {
+				break;
+			}
+
+			currentRow = currentRow.next();
+		}
 
 			questions.push(question);
 		});
