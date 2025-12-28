@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import questionService from "../services/questionService";
 import prisma from "../lib/prisma";
+import { convertCreatedAtArray } from "../utils/date";
 
 class ExamController {
 	/**
@@ -10,13 +11,13 @@ class ExamController {
 	 */
 	async crawlAndSave(req: Request, res: Response) {
 		try {
-			const { url } = req.body;
+			const { url, forceRetry } = req.body;
 
 			if (!url) {
 				return res.status(400).json({ error: "URL이 필요합니다" });
 			}
 
-			const result = await questionService.saveExamFromUrl(url);
+			const result = await questionService.saveExamFromUrl(url, forceRetry || false);
 
 			return res.json({
 				success: true,
@@ -32,23 +33,56 @@ class ExamController {
 	}
 
 	/**
-	 * GET /api/exams
-	 * 시험 목록 조회
+	 * POST /api/crawl/batch
+	 * 여러 URL을 순차적으로 크롤링 후 저장
 	 */
-	async getExams(req: Request, res: Response) {
+	async crawlBatch(req: Request, res: Response) {
 		try {
-			const { subject } = req.query;
+			const { urls, forceRetry } = req.body;
 
-			const exams = await questionService.getExams(subject as string);
+			if (!urls || !Array.isArray(urls) || urls.length === 0) {
+				return res.status(400).json({ error: "URLs 배열이 필요합니다" });
+			}
+
+			const results = [];
+			const errors = [];
+
+			// 순차 처리 (동시 트랜잭션 충돌 방지)
+			for (let i = 0; i < urls.length; i++) {
+				const url = urls[i];
+				try {
+					console.log(`\n[${i + 1}/${urls.length}] 크롤링 시작: ${url}`);
+					const result = await questionService.saveExamFromUrl(url, forceRetry || false);
+					results.push({
+						url,
+						success: true,
+						data: result,
+					});
+					console.log(`[${i + 1}/${urls.length}] ✅ 성공: ${result.title}`);
+				} catch (error: any) {
+					console.error(`[${i + 1}/${urls.length}] ❌ 실패: ${error.message}`);
+					errors.push({
+						url,
+						success: false,
+						error: error.message,
+					});
+				}
+			}
 
 			return res.json({
 				success: true,
-				data: exams,
+				data: {
+					total: urls.length,
+					successful: results.length,
+					failed: errors.length,
+					results,
+					errors,
+				},
 			});
 		} catch (error: any) {
-			console.error("시험 조회 에러:", error);
+			console.error("배치 크롤링 에러:", error);
 			return res.status(500).json({
-				error: "시험 조회 실패",
+				error: "배치 크롤링 실패",
 				message: error.message,
 			});
 		}

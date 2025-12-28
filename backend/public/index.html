@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>방송대 CBT 시스템 - 테스트</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section h2 {
+            color: #34495e;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        input, button, select {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="url"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        button:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-size: 13px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        .error {
+            background: #fadbd8;
+            color: #e74c3c;
+        }
+        .list-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .list-item:hover {
+            background: #f8f9fa;
+        }
+        .question {
+            background: #fff;
+            border: 2px solid #3498db;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        .choice {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .choice:hover {
+            background: #e8f4f8;
+        }
+        .choice.selected {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        .loading {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #34495e;
+            font-weight: 600;
+        }
+        .inline-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .inline-group input {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 방송대 CBT 시스템 테스트</h1>
+
+        <!-- 1. 크롤링 -->
+        <div class="section">
+            <h2>1️⃣ 시험 크롤링</h2>
+            <label>시험 URL (여러 개는 줄바꿈으로 구분):</label>
+            <textarea id="crawlUrl" rows="5" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; font-family: inherit;" placeholder="https://...&#10;https://...&#10;https://..."></textarea>
+            <div class="inline-group">
+                <button onclick="crawlExam()">크롤링 시작</button>
+                <button onclick="crawlExam(true)">재시도 (forceRetry)</button>
+            </div>
+            <div id="crawlResult" class="result" style="display:none"></div>
+        </div>
+
+        <!-- 2. 과목 목록 -->
+        <div class="section">
+            <h2>2️⃣ 과목 목록</h2>
+            <label>검색어 (선택):</label>
+            <input type="text" id="subjectSearch" placeholder="과목명 검색">
+            <button onclick="loadSubjects()">과목 목록 조회</button>
+            <div id="subjectList" class="result" style="display:none"></div>
+        </div>
+
+        <!-- 3. 시험 목록 -->
+        <div class="section">
+            <h2>3️⃣ 시험 목록</h2>
+            <div class="inline-group">
+                <div style="flex: 1;">
+                    <label>과목명:</label>
+                    <input type="text" id="examSubject" placeholder="예: 사회복지">
+                </div>
+                <div style="flex: 1;">
+                    <label>연도:</label>
+                    <input type="number" id="examYear" placeholder="예: 2024">
+                </div>
+            </div>
+            <div class="inline-group">
+                <div style="flex: 1;">
+                    <label>시험 유형:</label>
+                    <select id="examType" style="width: 100%;">
+                        <option value="">전체</option>
+                        <option value="1">1학기 기말</option>
+                        <option value="2">2학기 기말</option>
+                        <option value="3">하계학기</option>
+                        <option value="4">동계학기</option>
+                    </select>
+                </div>
+                <div style="flex: 1;">
+                    <label>정렬:</label>
+                    <select id="examSort" style="width: 100%;">
+                        <option value="latest">최신순</option>
+                        <option value="oldest">오래된순</option>
+                        <option value="name">과목명순</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="loadExams()">시험 조회</button>
+            <div id="examList" class="result" style="display:none"></div>
+        </div>
+
+        <!-- 4. 시험 풀기 -->
+        <div class="section">
+            <h2>4️⃣ 시험 풀기</h2>
+            <label>시험 ID:</label>
+            <input type="text" id="examId" placeholder="시험 ID 입력">
+            <div class="inline-group">
+                <button onclick="loadExamQuestions('test')">테스트 모드</button>
+                <button onclick="loadExamQuestions('study')">학습 모드</button>
+            </div>
+            <div id="examQuestions"></div>
+        </div>
+
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentAnswers = {};
+
+        // 1. 크롤링
+        async function crawlExam(forceRetry = false) {
+            const urlInput = document.getElementById('crawlUrl').value.trim();
+            const resultDiv = document.getElementById('crawlResult');
+            
+            if (!urlInput) {
+                alert('URL을 입력하세요');
+                return;
+            }
+
+            // 여러 URL인지 확인 (줄바꿈으로 구분)
+            const urls = urlInput.split('\n').map(u => u.trim()).filter(u => u);
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+
+            if (urls.length === 1) {
+                // 단일 URL 크롤링
+                resultDiv.textContent = '크롤링 중...';
+
+                try {
+                    const response = await fetch(`${API_BASE}/crawl`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: urls[0], forceRetry })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        resultDiv.className = 'result success';
+                        resultDiv.textContent = `✅ 성공!\n\n` +
+                            `시험 ID: ${data.data.examId}\n` +
+                            `제목: ${data.data.title}\n` +
+                            `문제 수: ${data.data.questionCount}`;
+                    } else {
+                        throw new Error(data.message || '크롤링 실패');
+                    }
+                } catch (error) {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 실패\n\n${error.message}`;
+                }
+            } else {
+                // 다중 URL 배치 크롤링
+                resultDiv.textContent = `배치 크롤링 시작 (${urls.length}개)...\n진행 중...`;
+
+                try {
+                    const response = await fetch(`${API_BASE}/crawl/batch`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ urls, forceRetry })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        const { total, successful, failed, results, errors } = data.data;
+                        
+                        let output = `📊 배치 크롤링 완료\n\n`;
+                        output += `총 ${total}개 | 성공 ${successful}개 | 실패 ${failed}개\n\n`;
+                        
+                        if (results.length > 0) {
+                            output += `✅ 성공한 항목:\n`;
+                            results.forEach((r, i) => {
+                                output += `${i + 1}. ${r.data.title} (ID: ${r.data.examId})\n`;
+                            });
+                        }
+                        
+                        if (errors.length > 0) {
+                            output += `\n❌ 실패한 항목:\n`;
+                            errors.forEach((e, i) => {
+                                output += `${i + 1}. ${e.url}\n   ${e.error}\n`;
+                            });
+                        }
+
+                        resultDiv.className = failed > 0 ? 'result' : 'result success';
+                        resultDiv.textContent = output;
+                    } else {
+                        throw new Error(data.message || '배치 크롤링 실패');
+                    }
+                } catch (error) {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ 실패\n\n${error.message}`;
+                }
+            }
+        }
+
+        // 2. 과목 목록
+        async function loadSubjects() {
+            const search = document.getElementById('subjectSearch').value;
+            const resultDiv = document.getElementById('subjectList');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<div class="loading">로딩 중...</div>';
+
+            try {
+                const url = search 
+                    ? `${API_BASE}/subjects?search=${encodeURIComponent(search)}`
+                    : `${API_BASE}/subjects`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const subjects = data.data.subjects;
+                    if (subjects.length === 0) {
+                        resultDiv.innerHTML = '<p>과목이 없습니다.</p>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="grid">' + subjects.map(subject => `
+                            <div class="list-item" onclick="loadExamsBySubject(${subject.id})">
+                                <strong>${subject.name}</strong><br>
+                                <small>시험 ${subject.examCount}개</small>
+                            </div>
+                        `).join('') + '</div>';
+                    }
+                } else {
+                    throw new Error(data.message || '조회 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ${error.message}`;
+            }
+        }
+
+        // 3. 시험 목록
+        async function loadExams(page = 1) {
+            const resultDiv = document.getElementById('examList');
+            const subject = document.getElementById('examSubject').value;
+            const year = document.getElementById('examYear').value;
+            const examType = document.getElementById('examType').value;
+            const sort = document.getElementById('examSort').value;
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<div class="loading">로딩 중...</div>';
+
+            try {
+                const params = new URLSearchParams();
+                if (subject) params.append('subject', subject);
+                if (year) params.append('year', year);
+                if (examType) params.append('examType', examType);
+                if (sort) params.append('sort', sort);
+                params.append('page', page.toString());
+                params.append('limit', '10');
+
+                const response = await fetch(`${API_BASE}/exams?${params}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const exams = data.data;
+                    const pagination = data.pagination;
+
+                    if (exams.length === 0) {
+                        resultDiv.innerHTML = '<p>시험이 없습니다.</p>';
+                    } else {
+                        let html = '<div class="grid">' + exams.map(exam => `
+                            <div class="list-item" onclick="document.getElementById('examId').value=${exam.id}; window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });">
+                                <strong>${exam.title}</strong><br>
+                                <small>ID: ${exam.id} | 문제: ${exam.totalQuestions}개</small><br>
+                                <small style="color: #7f8c8d;">${exam.year}년 ${getExamTypeText(exam.examType)}</small>
+                            </div>
+                        `).join('') + '</div>';
+
+                        // 페이지네이션
+                        if (pagination.totalPages > 1) {
+                            html += '<div style="margin-top: 20px; text-align: center;">';
+                            html += `<p>페이지 ${pagination.page} / ${pagination.totalPages} (총 ${pagination.total}개)</p>`;
+                            html += '<div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">';
+                            
+                            if (pagination.page > 1) {
+                                html += `<button onclick="loadExams(${pagination.page - 1})">이전</button>`;
+                            }
+                            
+                            // 페이지 번호 (최대 5개)
+                            const startPage = Math.max(1, pagination.page - 2);
+                            const endPage = Math.min(pagination.totalPages, pagination.page + 2);
+                            
+                            for (let i = startPage; i <= endPage; i++) {
+                                const active = i === pagination.page ? 'style="background: #2980b9;"' : '';
+                                html += `<button onclick="loadExams(${i})" ${active}>${i}</button>`;
+                            }
+                            
+                            if (pagination.page < pagination.totalPages) {
+                                html += `<button onclick="loadExams(${pagination.page + 1})">다음</button>`;
+                            }
+                            
+                            html += '</div></div>';
+                        }
+
+                        resultDiv.innerHTML = html;
+                    }
+                } else {
+                    throw new Error(data.message || '조회 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ${error.message}`;
+            }
+        }
+
+        function getExamTypeText(type) {
+            const types = {
+                1: '1학기 기말',
+                2: '2학기 기말',
+                3: '하계학기',
+                4: '동계학기'
+            };
+            return types[type] || '기타';
+        }
+
+        // 과목별 시험 목록
+        async function loadExamsBySubject(subjectId) {
+            const resultDiv = document.getElementById('examList');
+            
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<div class="loading">로딩 중...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/subjects/${subjectId}/exams`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const exams = data.data;
+                    if (exams.length === 0) {
+                        resultDiv.innerHTML = '<p>시험이 없습니다.</p>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="grid">' + exams.map(exam => `
+                            <div class="list-item" onclick="document.getElementById('examId').value=${exam.id}">
+                                <strong>${exam.title}</strong><br>
+                                <small>ID: ${exam.id} | 문제: ${exam.totalQuestions}개</small>
+                            </div>
+                        `).join('') + '</div>';
+                    }
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                } else {
+                    throw new Error(data.message || '조회 실패');
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ${error.message}`;
+            }
+        }
+
+        // 4. 시험 문제 조회
+        async function loadExamQuestions(mode) {
+            const examId = document.getElementById('examId').value;
+            const resultDiv = document.getElementById('examQuestions');
+            
+            if (!examId) {
+                alert('시험 ID를 입력하세요');
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading">문제 로딩 중...</div>';
+            currentAnswers = {};
+
+            try {
+                const response = await fetch(`${API_BASE}/exams/${examId}/questions?mode=${mode}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const { exam, questions } = data.data;
+                    
+                    let html = `
+                        <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                            <h3>${exam.title}</h3>
+                            <p>총 ${exam.totalQuestions}문제 | 모드: ${mode === 'study' ? '학습' : '테스트'}</p>
+                        </div>
+                    `;
+
+                    questions.forEach(q => {
+                        html += `
+                            <div class="question">
+                                <strong>문제 ${q.number}.</strong> ${q.text}
+                                ${q.imageUrl ? `<br><img src="${q.imageUrl}" style="max-width: 100%; margin: 10px 0;">` : ''}
+                                ${mode === 'study' && q.correctAnswer ? `<br><span style="color: #27ae60;">✓ 정답: ${q.correctAnswer}번</span>` : ''}
+                                <div style="margin-top: 10px;">
+                                    ${q.choices.map(choice => `
+                                        <div class="choice" onclick="selectChoice(${q.id}, ${choice.number})" id="choice-${q.id}-${choice.number}">
+                                            ${choice.number}. ${choice.text}
+                                            ${mode === 'study' && choice.isCorrect ? ' ✓' : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    if (mode === 'test') {
+                        html += `
+                            <button onclick="submitExam(${examId})" style="width: 100%; padding: 15px; font-size: 16px;">
+                                답안 제출 및 채점
+                            </button>
+                        `;
+                    }
+
+                    resultDiv.innerHTML = html;
+                } else {
+                    throw new Error(data.message || '조회 실패');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result error">❌ ${error.message}</div>`;
+            }
+        }
+
+        function selectChoice(questionId, choiceNumber) {
+            // 같은 문제의 다른 선택지 선택 해제
+            document.querySelectorAll(`[id^="choice-${questionId}-"]`).forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // 선택한 항목 표시
+            document.getElementById(`choice-${questionId}-${choiceNumber}`).classList.add('selected');
+            
+            // 답안 저장
+            currentAnswers[questionId] = choiceNumber;
+        }
+
+        async function submitExam(examId) {
+            if (Object.keys(currentAnswers).length === 0) {
+                alert('답안을 선택하세요');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/exams/${examId}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answers: currentAnswers })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const result = data.data;
+                    alert(`채점 완료!\n\n` +
+                        `총 문제: ${result.totalQuestions}문제\n` +
+                        `정답: ${result.correctCount}개\n` +
+                        `점수: ${result.score}점`);
+                } else {
+                    throw new Error(data.message || '제출 실패');
+                }
+            } catch (error) {
+                alert(`❌ ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+

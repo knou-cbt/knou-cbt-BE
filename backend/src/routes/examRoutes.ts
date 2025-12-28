@@ -19,6 +19,11 @@ const router = Router();
  *           type: string
  *           description: 크롤링할 시험 문제 페이지 URL
  *           example: "https://example.com/exam"
+ *         forceRetry:
+ *           type: boolean
+ *           description: 부분적으로 저장된 데이터가 있을 경우 삭제 후 재시도 여부
+ *           default: false
+ *           example: false
  *     
  *     Subject:
  *       type: object
@@ -53,24 +58,6 @@ const router = Router();
  *           type: string
  *         examCount:
  *           type: integer
- *         exams:
- *           type: array
- *           items:
- *             type: object
- *             properties:
- *               id:
- *                 type: integer
- *               title:
- *                 type: string
- *               year:
- *                 type: integer
- *               examType:
- *                 type: integer
- *               totalQuestions:
- *                 type: integer
- *               createdAt:
- *                 type: string
- *                 format: date-time
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -206,9 +193,81 @@ const router = Router();
 
 /**
  * @swagger
+ * /api/crawl/batch:
+ *   post:
+ *     summary: 여러 시험 문제를 순차적으로 크롤링 및 저장
+ *     description: |
+ *       여러 URL을 한 번에 받아서 순차적으로 크롤링합니다.
+ *       동시 트랜잭션 충돌을 방지하기 위해 순차 처리됩니다.
+ *     tags: [Crawl]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - urls
+ *             properties:
+ *               urls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: 크롤링할 URL 배열
+ *                 example: ["https://example.com/exam1", "https://example.com/exam2"]
+ *               forceRetry:
+ *                 type: boolean
+ *                 description: 부분 저장 재시도 여부
+ *                 default: false
+ *     responses:
+ *       200:
+ *         description: 배치 크롤링 완료 (일부 실패 포함 가능)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     successful:
+ *                       type: integer
+ *                     failed:
+ *                       type: integer
+ *                     results:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *       400:
+ *         description: 잘못된 요청
+ *       500:
+ *         description: 배치 크롤링 실패
+ */
+router.post("/crawl/batch", examController.crawlBatch);
+
+/**
+ * @swagger
  * /api/crawl:
  *   post:
  *     summary: 시험 문제 크롤링 및 저장
+ *     description: |
+ *       올에이클래스 시험 페이지를 크롤링하여 DB에 저장합니다.
+ *       
+ *       **중복 체크:**
+ *       - 같은 과목, 연도, 시험 유형의 시험이 이미 존재하면 에러를 반환합니다.
+ *       - 부분적으로 저장된 경우 (문제 수가 맞지 않음) `forceRetry: true`로 재시도 가능합니다.
+ *       
+ *       **트랜잭션:**
+ *       - 전체 저장 과정이 하나의 트랜잭션으로 처리됩니다.
+ *       - 중간에 실패하면 자동으로 롤백됩니다.
  *     tags: [Crawl]
  *     requestBody:
  *       required: true
@@ -216,13 +275,39 @@ const router = Router();
  *         application/json:
  *           schema:
  *             $ref: '#/components/schemas/CrawlRequest'
+ *           examples:
+ *             normal:
+ *               summary: 일반 크롤링
+ *               value:
+ *                 url: "https://example.com/exam"
+ *             retry:
+ *               summary: 부분 저장 재시도
+ *               value:
+ *                 url: "https://example.com/exam"
+ *                 forceRetry: true
  *     responses:
  *       200:
  *         description: 크롤링 및 저장 성공
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ApiResponse'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     examId:
+ *                       type: integer
+ *                       example: 1
+ *                     title:
+ *                       type: string
+ *                       example: "사회복지학개론 2024학년도 하계학기"
+ *                     questionCount:
+ *                       type: integer
+ *                       example: 50
  *       400:
  *         description: 잘못된 요청 (URL 누락)
  *         content:
@@ -230,11 +315,22 @@ const router = Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
- *         description: 크롤링 실패
+ *         description: 크롤링 실패 (중복 시험, 부분 저장 등)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               duplicate:
+ *                 summary: 중복 시험
+ *                 value:
+ *                   error: "크롤링 실패"
+ *                   message: "이미 존재하는 시험입니다: 사회복지학개론 2024학년도 하계학기 (ID: 1)"
+ *               partial:
+ *                 summary: 부분 저장
+ *                 value:
+ *                   error: "크롤링 실패"
+ *                   message: "부분적으로 저장된 시험이 있습니다: 사회복지학개론 2024학년도 하계학기 (ID: 1, 저장된 문제: 30/50)\n다시 시도하려면 forceRetry 옵션을 사용하세요."
  */
 router.post("/crawl", examController.crawlAndSave);
 
@@ -316,7 +412,17 @@ router.get("/subjects", subjectController.getSubjects);
  *                   type: boolean
  *                   example: true
  *                 data:
- *                   $ref: '#/components/schemas/SubjectDetail'
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     examCount:
+ *                       type: integer
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
  *       404:
  *         description: 과목을 찾을 수 없음
  *         content:
@@ -359,7 +465,23 @@ router.get("/subjects/:id", subjectController.getSubjectById);
  *                 data:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Exam'
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       subjectId:
+ *                         type: integer
+ *                       year:
+ *                         type: integer
+ *                       examType:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       totalQuestions:
+ *                         type: integer
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
  *       500:
  *         description: 시험 목록 조회 실패
  *         content:
@@ -368,42 +490,6 @@ router.get("/subjects/:id", subjectController.getSubjectById);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 router.get("/subjects/:subjectId/exams", subjectController.getExamsBySubject);
-
-/**
- * @swagger
- * /api/exams:
- *   get:
- *     summary: 시험 목록 조회
- *     tags: [Exams]
- *     parameters:
- *       - in: query
- *         name: subject
- *         schema:
- *           type: string
- *         description: 과목명으로 필터링 (선택사항)
- *     responses:
- *       200:
- *         description: 시험 목록 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Exam'
- *       500:
- *         description: 시험 조회 실패
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- */
-router.get("/exams", examController.getExams);
 
 /**
  * @swagger
