@@ -12,13 +12,35 @@ app.use(cors());
 app.use(express.json());
 
 // Swagger UI
+app.get("/api-docs/swagger.json", (req, res) => {
+	// 동적으로 현재 호스트 기반 서버 URL 설정
+	const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+	const host = req.headers["x-forwarded-host"] || req.headers.host || "localhost:3000";
+	const serverUrl = `${protocol}://${host}`;
+	
+	const spec = {
+		...swaggerSpec,
+		servers: [
+			{
+				url: serverUrl,
+				description: process.env.NODE_ENV === "production" ? "Production server" : "Development server",
+			},
+		],
+	};
+	
+	res.json(spec);
+});
+
 app.use(
 	"/api-docs",
 	swaggerUi.serve,
-	swaggerUi.setup(swaggerSpec, {
+	swaggerUi.setup(null, {
 		customCss: ".swagger-ui .topbar { display: none }",
 		customSiteTitle: "KNOU CBT API Documentation",
 		customfavIcon: "/favicon.ico",
+		swaggerOptions: {
+			url: "/api-docs/swagger.json",
+		},
 	})
 );
 

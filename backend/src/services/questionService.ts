@@ -126,6 +126,7 @@ class QuestionService {
 
 	/**
 	 * 특정 시험의 문제 조회 (CBT용)
+	 * 프론트엔드에서 사용하기 편한 형태로 변환
 	 */
 	async getExamQuestions(examId: number, includeAnswers: boolean = false) {
 		const exam = await prisma.exam.findUnique({
@@ -134,7 +135,11 @@ class QuestionService {
 				subject: true,
 				questions: {
 					include: {
-						choices: true,
+						choices: {
+							orderBy: {
+								choiceNumber: "asc",
+							},
+						},
 					},
 					orderBy: {
 						questionNumber: "asc",
@@ -147,15 +152,40 @@ class QuestionService {
 			throw new Error("시험을 찾을 수 없습니다");
 		}
 
-		// 학습 모드가 아니면 정답 제거
-		if (!includeAnswers) {
-			exam.questions = exam.questions.map((q) => ({
-				...q,
-				correctAnswer: 0, // 정답 숨김
+		// 프론트엔드에서 사용하기 편한 형태로 변환
+		const transformedQuestions = exam.questions.map((q) => {
+			const choices = q.choices.map((choice) => ({
+				number: choice.choiceNumber,
+				text: choice.choiceText,
+				imageUrl: choice.choiceImageUrl,
+				// study 모드일 때만 isCorrect 추가
+				...(includeAnswers && {
+					isCorrect: choice.choiceNumber === q.correctAnswer,
+				}),
 			}));
-		}
 
-		return exam;
+			return {
+				id: q.id,
+				number: q.questionNumber,
+				text: q.questionText,
+				imageUrl: q.questionImageUrl,
+				// study 모드일 때만 correctAnswer 포함
+				...(includeAnswers && {
+					correctAnswer: q.correctAnswer,
+				}),
+				choices,
+			};
+		});
+
+		return {
+			exam: {
+				id: exam.id,
+				title: exam.title,
+				subject: exam.subject.name,
+				totalQuestions: exam.totalQuestions,
+			},
+			questions: transformedQuestions,
+		};
 	}
 }
 
