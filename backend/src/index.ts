@@ -49,27 +49,18 @@ app.use("/api", examRoutes);
 
 // Health check
 app.get("/", (req, res) => {
-	res.json({ 
-		status: "ok",
-		message: "KNOU CBT API",
-		docs: "/api-docs"
-	});
+	res.send("Server is running");
 });
 
 app.get("/health", (req, res) => {
 	res.json({ status: "ok" });
 });
 
-// Vercel에서는 export default로 내보내기
-export default app;
+// 서버 시작
+const PORT = parseInt(process.env.PORT || "3000");
+const HOST = "0.0.0.0";
 
-// 로컬 개발 환경에서만 서버 시작
-if (process.env.NODE_ENV !== "production") {
-	const PORT = parseInt(process.env.PORT || "3000");
-	const HOST = "0.0.0.0";
-	
-	app.listen(PORT, HOST, () => {
-		console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-		console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
-	});
-}
+app.listen(PORT, HOST, () => {
+	console.log(`🚀 Server running on http://${HOST}:${PORT}`);
+	console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
+});
