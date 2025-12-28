@@ -1,6 +1,7 @@
 // src/index.ts
 import express from "express";
 import cors from "cors";
+import path from "path";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swaggerSpec";
 import examRoutes from "./routes/examRoutes";
@@ -10,6 +11,9 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// 정적 파일 제공 (테스트 페이지)
+app.use(express.static(path.join(__dirname, "../public")));
 
 // Swagger UI
 app.get("/api-docs/swagger.json", (req, res) => {
@@ -48,10 +52,6 @@ app.use(
 app.use("/api", examRoutes);
 
 // Health check
-app.get("/", (req, res) => {
-	res.send("Server is running");
-});
-
 app.get("/health", (req, res) => {
 	res.json({ status: "ok" });
 });
@@ -63,4 +63,5 @@ const HOST = "0.0.0.0";
 app.listen(PORT, HOST, () => {
 	console.log(`🚀 Server running on http://${HOST}:${PORT}`);
 	console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
+	console.log(`🧪 Test page available at http://${HOST}:${PORT}`);
 });

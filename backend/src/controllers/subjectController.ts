@@ -1,6 +1,7 @@
 // src/controllers/subjectController.ts
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
+import { toKSTString, convertCreatedAtArray } from "../utils/date";
 
 class SubjectController {
 	/**
@@ -49,7 +50,7 @@ class SubjectController {
 						id: s.id,
 						name: s.name,
 						examCount: s._count.exams,
-						createdAt: s.createdAt,
+						createdAt: toKSTString(s.createdAt),
 					})),
 					pagination: {
 						page: pageNum,
@@ -82,19 +83,6 @@ class SubjectController {
 					_count: {
 						select: { exams: true },
 					},
-					exams: {
-						select: {
-							id: true,
-							title: true,
-							year: true,
-							examType: true,
-							totalQuestions: true,
-							createdAt: true,
-						},
-						orderBy: {
-							year: "desc",
-						},
-					},
 				},
 			});
 
@@ -110,8 +98,7 @@ class SubjectController {
 					id: subject.id,
 					name: subject.name,
 					examCount: subject._count.exams,
-					exams: subject.exams,
-					createdAt: subject.createdAt,
+					createdAt: toKSTString(subject.createdAt),
 				},
 			});
 		} catch (error: any) {
@@ -133,9 +120,6 @@ class SubjectController {
 
 			const exams = await prisma.exam.findMany({
 				where: { subjectId },
-				include: {
-					subject: true,
-				},
 				orderBy: {
 					year: "desc",
 				},
@@ -143,7 +127,7 @@ class SubjectController {
 
 			return res.json({
 				success: true,
-				data: exams,
+				data: convertCreatedAtArray(exams),
 			});
 		} catch (error: any) {
 			console.error("시험 목록 조회 에러:", error);
