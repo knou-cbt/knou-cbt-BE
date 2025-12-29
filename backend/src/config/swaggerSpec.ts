@@ -207,39 +207,6 @@ export const swaggerSpec = {
 				},
 			},
 		},
-		"/api/exams": {
-			get: {
-				summary: "시험 목록 조회",
-				tags: ["Exams"],
-				parameters: [
-					{
-						in: "query",
-						name: "subject",
-						schema: { type: "string" },
-						description: "과목명으로 필터링 (선택사항)",
-					},
-				],
-				responses: {
-					200: {
-						description: "시험 목록 조회 성공",
-						content: {
-							"application/json": {
-								schema: {
-									type: "object",
-									properties: {
-										success: { type: "boolean" },
-										data: {
-											type: "array",
-											items: { $ref: "#/components/schemas/Exam" },
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 		"/api/exams/{id}/questions": {
 			get: {
 				summary: "시험 문제 조회",
