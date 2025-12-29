@@ -7,6 +7,28 @@ import examRoutes from "./routes/examRoutes";
 
 const app = express();
 
+// 리버스 프록시 신뢰 설정 (x-forwarded-* 헤더를 신뢰)
+app.set("trust proxy", true);
+
+// HTTPS 리다이렉트 미들웨어 (프로덕션 환경에서만)
+if (process.env.NODE_ENV === "production") {
+	app.use((req, res, next) => {
+		// x-forwarded-proto 헤더 확인 (리버스 프록시 사용 시)
+		const forwardedProto = req.headers["x-forwarded-proto"];
+		const isHttps = forwardedProto === "https" || req.secure;
+		
+		// HTTP 요청인 경우 HTTPS로 리다이렉트
+		if (!isHttps && forwardedProto !== "https") {
+			const host = req.headers.host || req.headers["x-forwarded-host"];
+			if (host) {
+				return res.redirect(301, `https://${host}${req.originalUrl}`);
+			}
+		}
+		
+		next();
+	});
+}
+
 // Middleware
 app.use(cors());
 app.use(express.json());
