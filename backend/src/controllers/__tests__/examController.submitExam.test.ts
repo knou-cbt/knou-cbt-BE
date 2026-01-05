@@ -29,7 +29,7 @@ describe("ExamController.submitExam", () => {
 		jest.clearAllMocks();
 	});
 
-	it("should correctly grade answers when keys are questionNumbers (not questionIds)", async () => {
+	it("should correctly grade answers with new array format", async () => {
 		// Mock DB response
 		const mockExam = {
 			id: 20,
@@ -42,15 +42,15 @@ describe("ExamController.submitExam", () => {
 
 		(prisma.exam.findUnique as jest.Mock).mockResolvedValue(mockExam);
 
-		// 프론트엔드가 보내는 형식: questionNumber를 키로 사용
+		// 새로운 배열 형식
 		mockRequest = {
 			params: { id: "20" },
 			body: {
-				answers: {
-					"1": 1, // 1번 문제 → 정답 1
-					"2": 3, // 2번 문제 → 오답 (정답은 2)
-					"3": 3, // 3번 문제 → 정답 3
-				},
+				answers: [
+					{ questionId: 722, selectedAnswer: 1 }, // 정답
+					{ questionId: 723, selectedAnswer: 3 }, // 오답
+					{ questionId: 724, selectedAnswer: 3 }, // 정답
+				],
 			},
 		};
 
@@ -93,7 +93,7 @@ describe("ExamController.submitExam", () => {
 		});
 	});
 
-	it("should handle string answers (from JSON) correctly", async () => {
+	it("should handle string selectedAnswer (convert to number)", async () => {
 		const mockExam = {
 			id: 1,
 			questions: [
@@ -104,14 +104,13 @@ describe("ExamController.submitExam", () => {
 
 		(prisma.exam.findUnique as jest.Mock).mockResolvedValue(mockExam);
 
-		// JSON에서 파싱되면 숫자로 오지만, 일부 클라이언트는 문자열로 보낼 수 있음
 		mockRequest = {
 			params: { id: "1" },
 			body: {
-				answers: {
-					"1": "2", // 문자열 "2"
-					"2": 4,   // 숫자 4
-				},
+				answers: [
+					{ questionId: 100, selectedAnswer: "2" }, // 문자열
+					{ questionId: 101, selectedAnswer: 4 },   // 숫자
+				],
 			},
 		};
 
@@ -127,13 +126,13 @@ describe("ExamController.submitExam", () => {
 				score: 100,
 				results: expect.arrayContaining([
 					expect.objectContaining({
-						questionNumber: 1,
+						questionId: 100,
 						userAnswer: 2, // 문자열 "2"가 숫자 2로 변환됨
 						correctAnswer: 2,
 						isCorrect: true,
 					}),
 					expect.objectContaining({
-						questionNumber: 2,
+						questionId: 101,
 						userAnswer: 4,
 						correctAnswer: 4,
 						isCorrect: true,
@@ -143,10 +142,12 @@ describe("ExamController.submitExam", () => {
 		});
 	});
 
-	it("should return 400 when answers are missing", async () => {
+	it("should return 400 when answers is not an array", async () => {
 		mockRequest = {
 			params: { id: "1" },
-			body: {},
+			body: {
+				answers: { "1": 2 }, // 객체 형식 (잘못된 형식)
+			},
 		};
 
 		await examController.submitExam(
@@ -156,7 +157,7 @@ describe("ExamController.submitExam", () => {
 
 		expect(statusMock).toHaveBeenCalledWith(400);
 		expect(jsonMock).toHaveBeenCalledWith({
-			error: "답안이 필요합니다",
+			error: "답안이 필요합니다 (배열 형식)",
 		});
 	});
 
@@ -166,7 +167,7 @@ describe("ExamController.submitExam", () => {
 		mockRequest = {
 			params: { id: "999" },
 			body: {
-				answers: { "1": 1 },
+				answers: [{ questionId: 1, selectedAnswer: 1 }],
 			},
 		};
 
@@ -197,11 +198,11 @@ describe("ExamController.submitExam", () => {
 		mockRequest = {
 			params: { id: "1" },
 			body: {
-				answers: {
-					"1": 1,
-					"3": 3,
-					// "2"는 누락
-				},
+				answers: [
+					{ questionId: 100, selectedAnswer: 1 },
+					{ questionId: 102, selectedAnswer: 3 },
+					// questionId 101 누락
+				],
 			},
 		};
 
@@ -217,12 +218,60 @@ describe("ExamController.submitExam", () => {
 				score: 67, // 2/3 * 100 = 66.666... → 67
 				results: expect.arrayContaining([
 					expect.objectContaining({
-						questionNumber: 2,
-						userAnswer: undefined,
+						questionId: 101,
+						userAnswer: null,
 						correctAnswer: 2,
 						isCorrect: false,
 					}),
 				]),
+			}),
+		});
+	});
+
+	it("should handle empty answers array", async () => {
+		const mockExam = {
+			id: 1,
+			questions: [
+				{ id: 100, questionNumber: 1, correctAnswer: 1 },
+				{ id: 101, questionNumber: 2, correctAnswer: 2 },
+			],
+		};
+
+		(prisma.exam.findUnique as jest.Mock).mockResolvedValue(mockExam);
+
+		mockRequest = {
+			params: { id: "1" },
+			body: {
+				answers: [], // 빈 배열
+			},
+		};
+
+		await examController.submitExam(
+			mockRequest as Request,
+			mockResponse as Response
+		);
+
+		expect(jsonMock).toHaveBeenCalledWith({
+			success: true,
+			data: expect.objectContaining({
+				correctCount: 0,
+				score: 0,
+				results: [
+					{
+						questionId: 100,
+						questionNumber: 1,
+						userAnswer: null,
+						correctAnswer: 1,
+						isCorrect: false,
+					},
+					{
+						questionId: 101,
+						questionNumber: 2,
+						userAnswer: null,
+						correctAnswer: 2,
+						isCorrect: false,
+					},
+				],
 			}),
 		});
 	});
