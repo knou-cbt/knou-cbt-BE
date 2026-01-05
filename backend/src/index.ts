@@ -61,6 +61,6 @@ const PORT = parseInt(process.env.PORT || "3000");
 const HOST = "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
-	console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-	console.log(`📚 Swagger docs available at http://${HOST}:${PORT}/api-docs`);
+	console.log(`🚀 Server running on http://127.0.0.1:${PORT}`);
+	console.log(`📚 Swagger docs available at http://127.0.0.1:${PORT}/api-docs`);
 });

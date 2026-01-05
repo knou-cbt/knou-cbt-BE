@@ -118,7 +118,7 @@ class QuestionService {
 							questionNumber: qData.number,
 							questionText: qData.questionText,
 							questionImageUrl: qData.images[0] || null,
-							correctAnswer: qData.correctAnswer || 1,
+							correctAnswer: qData.correctAnswer ?? 1,
 						},
 					})
 				)

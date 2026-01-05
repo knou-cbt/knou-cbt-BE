@@ -141,7 +141,7 @@ const router = Router();
  *       properties:
  *         answers:
  *           type: object
- *           description: 문제 ID를 키로, 선택한 답안 번호를 값으로 하는 객체
+ *           description: 문제 번호(questionNumber)를 키로, 선택한 답안 번호를 값으로 하는 객체
  *           example:
  *             "1": 2
  *             "2": 3

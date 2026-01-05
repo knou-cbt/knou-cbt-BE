@@ -148,22 +148,30 @@ class ExamController {
 				});
 			}
 
-			// 채점
-			let correctCount = 0;
-			const results = exam.questions.map((q) => {
-				const userAnswer = answers[q.id];
-				const isCorrect = userAnswer === q.correctAnswer;
+		// 채점 (answers의 키는 questionNumber를 사용)
+		let correctCount = 0;
+		const results = exam.questions.map((q) => {
+			// 프론트엔드는 questionNumber(1, 2, 3...)를 키로 사용
+			const rawUserAnswer = (answers as Record<string, unknown>)[String(q.questionNumber)];
+			const userAnswer =
+				rawUserAnswer === null || rawUserAnswer === undefined
+					? undefined
+					: typeof rawUserAnswer === "number"
+						? rawUserAnswer
+						: parseInt(String(rawUserAnswer), 10);
 
-				if (isCorrect) correctCount++;
+			const isCorrect = Number.isFinite(userAnswer) && userAnswer === q.correctAnswer;
 
-				return {
-					questionId: q.id,
-					questionNumber: q.questionNumber,
-					userAnswer,
-					correctAnswer: q.correctAnswer,
-					isCorrect,
-				};
-			});
+			if (isCorrect) correctCount++;
+
+			return {
+				questionId: q.id,
+				questionNumber: q.questionNumber,
+				userAnswer,
+				correctAnswer: q.correctAnswer,
+				isCorrect,
+			};
+		});
 
 			const score = Math.round((correctCount / exam.questions.length) * 100);
 
