@@ -150,6 +150,8 @@ class ExamController {
 
 		// 답안을 Map으로 변환 (빠른 조회)
 		const answerMap = new Map<number, number>();
+		console.log("📝 받은 답안:", JSON.stringify(answers, null, 2));
+		
 		answers.forEach((answer: any) => {
 			if (answer.questionId !== undefined && answer.selectedAnswer !== undefined) {
 				// questionId를 명시적으로 숫자로 변환
@@ -163,26 +165,33 @@ class ExamController {
 				
 				if (Number.isFinite(questionId) && Number.isFinite(selectedAnswer)) {
 					answerMap.set(questionId, selectedAnswer);
+					console.log(`✅ Map에 저장: questionId=${questionId}, selectedAnswer=${selectedAnswer}`);
+				} else {
+					console.log(`❌ 숫자 변환 실패: questionId=${questionId}, selectedAnswer=${selectedAnswer}`);
 				}
+			} else {
+				console.log(`❌ 필드 누락:`, answer);
 			}
 		});
+		
+		console.log("🗺️ 최종 answerMap:", Array.from(answerMap.entries()));
 
-			// 채점
-			let correctCount = 0;
-			const results = exam.questions.map((q) => {
-				const userAnswer = answerMap.get(q.id);
-				const isCorrect = userAnswer !== undefined && userAnswer === q.correctAnswer;
+		// 채점
+		let correctCount = 0;
+		const results = exam.questions.map((q) => {
+			const userAnswer = answerMap.get(q.id);
+			const isCorrect = userAnswer !== undefined && userAnswer === q.correctAnswer;
 
-				if (isCorrect) correctCount++;
+			if (isCorrect) correctCount++;
 
-				return {
-					questionId: q.id,
-					questionNumber: q.questionNumber,
-					userAnswer: userAnswer ?? null,
-					correctAnswer: q.correctAnswer,
-					isCorrect,
-				};
-			});
+			return {
+				questionId: q.id,
+				questionNumber: q.questionNumber,
+				userAnswer: userAnswer ?? null,
+				correctAnswer: q.correctAnswer,
+				isCorrect,
+			};
+		});
 
 			const score = Math.round((correctCount / exam.questions.length) * 100);
 
