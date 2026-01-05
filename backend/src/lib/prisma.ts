@@ -1,22 +1,33 @@
 // src/lib/prisma.ts
 import "dotenv/config";
 import { PrismaClient } from "../generated/prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { Pool } from "pg";
 
-const pool = new Pool({
-	connectionString: process.env.DATABASE_URL,
-	max: 20, // 최대 커넥션 수 증가 (기본값: 10)
-	idleTimeoutMillis: 30000,
-	connectionTimeoutMillis: 10000,
-});
+// DATABASE_URL에 따라 자동으로 어댑터 선택
+const isDatabaseUrlPostgres = process.env.DATABASE_URL?.startsWith("postgresql://");
 
-// 연결 시 타임존 설정
-pool.on('connect', (client) => {
-	client.query('SET timezone = "Asia/Seoul"');
-});
+let prisma: PrismaClient;
 
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+if (isDatabaseUrlPostgres) {
+	// PostgreSQL 사용
+	const { PrismaPg } = require("@prisma/adapter-pg");
+	const { Pool } = require("pg");
+
+	const pool = new Pool({
+		connectionString: process.env.DATABASE_URL,
+		max: 20,
+		idleTimeoutMillis: 30000,
+		connectionTimeoutMillis: 10000,
+	});
+
+	pool.on('connect', (client: any) => {
+		client.query('SET timezone = "Asia/Seoul"');
+	});
+
+	const adapter = new PrismaPg(pool);
+	prisma = new PrismaClient({ adapter });
+} else {
+	// SQLite 사용 (기본값)
+	prisma = new PrismaClient();
+}
 
 export default prisma;
