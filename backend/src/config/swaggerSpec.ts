@@ -445,7 +445,7 @@ export const swaggerSpec = {
 							properties: {
 								questionId: { type: "integer" },
 								questionNumber: { type: "integer" },
-								userAnswer: { type: "integer" },
+								userAnswer: { type: "integer", nullable: true },
 								correctAnswer: { type: "integer" },
 								isCorrect: { type: "boolean" },
 							},
