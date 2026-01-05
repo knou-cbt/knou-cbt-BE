@@ -275,13 +275,27 @@ export const swaggerSpec = {
 								required: ["answers"],
 								properties: {
 									answers: {
-										type: "object",
-										description: "문제 ID를 키로, 선택한 답안 번호를 값으로 하는 객체",
-										example: {
-											"1": 2,
-											"2": 3,
-											"3": 1,
+										type: "array",
+										description: "답안 배열",
+										items: {
+											type: "object",
+											required: ["questionId", "selectedAnswer"],
+											properties: {
+												questionId: {
+													type: "integer",
+													description: "문제 ID",
+												},
+												selectedAnswer: {
+													type: "integer",
+													description: "선택한 답안 번호 (1-4)",
+												},
+											},
 										},
+										example: [
+											{ questionId: 1282, selectedAnswer: 4 },
+											{ questionId: 1283, selectedAnswer: 2 },
+											{ questionId: 1284, selectedAnswer: 1 },
+										],
 									},
 								},
 							},
