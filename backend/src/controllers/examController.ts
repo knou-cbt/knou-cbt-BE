@@ -148,19 +148,24 @@ class ExamController {
 				});
 			}
 
-			// 답안을 Map으로 변환 (빠른 조회)
-			const answerMap = new Map<number, number>();
-			answers.forEach((answer: any) => {
-				if (answer.questionId && answer.selectedAnswer !== undefined) {
-					const selectedAnswer = typeof answer.selectedAnswer === "number"
-						? answer.selectedAnswer
-						: parseInt(String(answer.selectedAnswer), 10);
-					
-					if (Number.isFinite(selectedAnswer)) {
-						answerMap.set(answer.questionId, selectedAnswer);
-					}
+		// 답안을 Map으로 변환 (빠른 조회)
+		const answerMap = new Map<number, number>();
+		answers.forEach((answer: any) => {
+			if (answer.questionId !== undefined && answer.selectedAnswer !== undefined) {
+				// questionId를 명시적으로 숫자로 변환
+				const questionId = typeof answer.questionId === "number"
+					? answer.questionId
+					: parseInt(String(answer.questionId), 10);
+				
+				const selectedAnswer = typeof answer.selectedAnswer === "number"
+					? answer.selectedAnswer
+					: parseInt(String(answer.selectedAnswer), 10);
+				
+				if (Number.isFinite(questionId) && Number.isFinite(selectedAnswer)) {
+					answerMap.set(questionId, selectedAnswer);
 				}
-			});
+			}
+		});
 
 			// 채점
 			let correctCount = 0;
