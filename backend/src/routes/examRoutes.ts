@@ -140,12 +140,25 @@ const router = Router();
  *         - answers
  *       properties:
  *         answers:
- *           type: object
- *           description: 문제 번호(questionNumber)를 키로, 선택한 답안 번호를 값으로 하는 객체
+ *           type: array
+ *           description: 답안 배열
+ *           items:
+ *             type: object
+ *             required:
+ *               - questionId
+ *               - selectedAnswer
+ *             properties:
+ *               questionId:
+ *                 type: integer
+ *                 description: 문제 ID
+ *               selectedAnswer:
+ *                 type: integer
+ *                 description: 선택한 답안 번호
  *           example:
- *             "1": 2
- *             "2": 3
- *             "3": 1
+ *             - questionId: 1282
+ *               selectedAnswer: 4
+ *             - questionId: 1283
+ *               selectedAnswer: 2
  *     
  *     SubmitResult:
  *       type: object

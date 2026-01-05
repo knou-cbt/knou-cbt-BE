@@ -120,11 +120,11 @@ class ExamController {
 	async submitExam(req: Request, res: Response) {
 		try {
 			const examId = parseInt(req.params.id);
-			const { answers } = req.body; // { questionId: choiceNumber }
+			const { answers } = req.body; // [{questionId, selectedAnswer}]
 
-			if (!answers || typeof answers !== "object") {
+			if (!answers || !Array.isArray(answers)) {
 				return res.status(400).json({
-					error: "답안이 필요합니다",
+					error: "답안이 필요합니다 (배열 형식)",
 				});
 			}
 
@@ -148,30 +148,36 @@ class ExamController {
 				});
 			}
 
-		// 채점 (answers의 키는 questionNumber를 사용)
-		let correctCount = 0;
-		const results = exam.questions.map((q) => {
-			// 프론트엔드는 questionNumber(1, 2, 3...)를 키로 사용
-			const rawUserAnswer = (answers as Record<string, unknown>)[String(q.questionNumber)];
-			const userAnswer =
-				rawUserAnswer === null || rawUserAnswer === undefined
-					? undefined
-					: typeof rawUserAnswer === "number"
-						? rawUserAnswer
-						: parseInt(String(rawUserAnswer), 10);
+			// 답안을 Map으로 변환 (빠른 조회)
+			const answerMap = new Map<number, number>();
+			answers.forEach((answer: any) => {
+				if (answer.questionId && answer.selectedAnswer !== undefined) {
+					const selectedAnswer = typeof answer.selectedAnswer === "number"
+						? answer.selectedAnswer
+						: parseInt(String(answer.selectedAnswer), 10);
+					
+					if (Number.isFinite(selectedAnswer)) {
+						answerMap.set(answer.questionId, selectedAnswer);
+					}
+				}
+			});
 
-			const isCorrect = Number.isFinite(userAnswer) && userAnswer === q.correctAnswer;
+			// 채점
+			let correctCount = 0;
+			const results = exam.questions.map((q) => {
+				const userAnswer = answerMap.get(q.id);
+				const isCorrect = userAnswer !== undefined && userAnswer === q.correctAnswer;
 
-			if (isCorrect) correctCount++;
+				if (isCorrect) correctCount++;
 
-			return {
-				questionId: q.id,
-				questionNumber: q.questionNumber,
-				userAnswer,
-				correctAnswer: q.correctAnswer,
-				isCorrect,
-			};
-		});
+				return {
+					questionId: q.id,
+					questionNumber: q.questionNumber,
+					userAnswer: userAnswer ?? null,
+					correctAnswer: q.correctAnswer,
+					isCorrect,
+				};
+			});
 
 			const score = Math.round((correctCount / exam.questions.length) * 100);
 
