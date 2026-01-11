@@ -11,7 +11,20 @@ const app = express();
 app.set("trust proxy", true);
 
 // Middleware
-app.use(cors());
+// CORS 설정 - www.qknou.kr와 qknou.kr 간 통신 허용
+app.use(
+	cors({
+		origin: [
+			"https://www.qknou.kr",
+			"https://qknou.kr",
+			"http://localhost:3000",
+			"http://localhost:5173", // Vite 개발 서버
+		],
+		credentials: true,
+		methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+		allowedHeaders: ["Content-Type", "Authorization"],
+	})
+);
 app.use(express.json());
 
 
